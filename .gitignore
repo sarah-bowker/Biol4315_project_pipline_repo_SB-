@@ -2,3 +2,8 @@
 .Rhistory
 .RData
 .Ruserdata
+.sequali_reports/
+.sequali_reports_filtered/
+.ERR1539057.fastq
+.ERR1539057_75filtered.fastq
+
