@@ -9,12 +9,124 @@ output: html_document
 ```{bash sequali_report, message=FALSE, warning=FALSE}
 # Get sequali report
 conda activate sequali_env
-sequali --outdir ./sequali_reports ./ERR1539057.fastq
+sequali --outdir ./sequali_reports "./Lachancea thermotolerans.fastq"
 
 # Filter the long read fastq file to keep the longest 75% of the sequesnce
 conda install filtlong
-filtlong -p 75 ERR1539057.fastq > ./ERR1539057_75filtered.fastq
+filtlong -p 90 "Lachancea thermotolerans.fastq" > "Lachancea_thermotolerans_90filtered.fastq"
+
+filtlong -p 95 "Lachancea thermotolerans.fastq" > "Lachancea_thermotolerans_95filtered.fastq"
 
 # Run sequali report on the filtered fastq file
-sequali --outdir ./sequali_reports_filtered ./ERR1539057_75filtered.fastq
+sequali --outdir ./sequali_reports "./Lachancea_thermotolerans_85filtered.fastq"
+
+conda activate flye-env
+flye --nano-raw Lachancea_thermotolerans_85filtered.fastq --out-dir flye_output --threads 8 --genome-size 10m
+
+     
+flye --nano-hq "Lachancea_thermotolerans_95filtered.fastq"\
+     --out-dir flye_output_scaffolded \
+     --threads 8 \
+     --genome-size 10m \
+     --scaffold \
+     --iterations 5
+     
+flye --nano-hq Lachancea_thermotolerans_95filtered.fastq \
+     --out-dir flye_output_unscaffolded \
+     --threads 8 \
+     --genome-size 10m \
+     --iterations 5
+```
+
+
+# step 2:
+``````{bash , eval=FALSE, message=FALSE, warning=FALSE}
+docker run --rm \
+  -v "$PWD":/data \
+  -w /data \
+  ezlabgva/busco:v6.0.0_cv1 \
+  busco -i assembly_unscaffolded.fasta -o busco_output -l lachanceathermotolerans_odb12 -m genome -c 8
+
+
+docker run --rm \
+  -v "$PWD":/data \
+  -w /data \
+  ezlabgva/busco:v6.0.0_cv1 \
+  busco -i assembly_unscaffolded.fasta -o busco_output -l saccharomycetaceae_odb12 -m genome -c 8
+
+
+docker run --rm -v "$(pwd)":/data -w /data quay.io/biocontainers/quast:5.3.0--py313pl5321h5ca1c30_2 \
+  quast.py assembly_unscaffolded.fasta \
+  -r GCF_000142805.1_ASM14280v1_genomic.fna \
+  -g GCF_000142805.1_ASM14280v1_genomic.gff \
+  -o quast_output
+  
+docker run --rm -v "$(pwd)":/data -w /data quay.io/biocontainers/quast:5.3.0--py313pl5321h5ca1c30_2 \
+  quast.py assembly_scaffolded.fasta \
+  -r GCF_000142805.1_ASM14280v1_genomic.fna \
+  -g GCF_000142805.1_ASM14280v1_genomic.gff \
+  -o quast_scaffolded_output
+
+
+docker run --rm -v "$PWD":/data -w /data \
+  nextgenusfs/funannotate funannotate clean \
+ -i assembly_unscaffolded.fasta -o assembly_unscaffolded_cleaned.fasta
+
+  
+  
+docker run --rm -v "$PWD":/data -w /data \
+  nextgenusfs/funannotate funannotate clean \
+ -i assembly_scaffolded.fasta -o assembly_scaffolded_cleaned.fasta
+ 
+ 
+
+docker run --rm -v "$PWD":/data -w /data \
+  nextgenusfs/funannotate funannotate mask \
+ -i assembly_unscaffolded_cleaned.fasta -o assembly_unscaffolded_masked.fasta
+
+docker run --rm -v "$PWD":/data -w /data \
+  nextgenusfs/funannotate funannotate mask \
+ -i assembly_scaffolded_cleaned.fasta -o assembly_scaffolded_masked.fasta  
+
+
+
+docker run --rm -v "$PWD":/data -w /data --platform linux/amd64 \
+  nextgenusfs/funannotate funannotate predict \
+  -i assembly_unscaffolded_masked.fasta \
+  -o /data/unscaffolded_output \
+  --species "Lachancea thermotolerans" \
+  --strain my_strain \
+  --protein_evidence /data/GCF_000142805.1_ASM14280v1_protein.faa \
+  --transcript_evidence /data/GCF_000142805.1_ASM14280v1_cds_from_genomic.fna \
+  --cpus 8
+  
+  
+
+docker run --rm -v "$PWD":/data -w /data --platform linux/amd64 \
+  nextgenusfs/funannotate funannotate predict \
+  -i assembly_scaffolded_masked.fasta \
+  -o /data/scaffolded_output \
+  --species "Lachancea thermotolerans" \
+  --strain my_strain \
+  --protein_evidence /data/GCF_000142805.1_ASM14280v1_protein.faa \
+  --transcript_evidence /data/GCF_000142805.1_ASM14280v1_cds_from_genomic.fna \
+  --cpus 8
+
+  
+docker run --rm -v "$PWD":/data -w /data --platform linux/amd64 \
+  nextgenusfs/funannotate funannotate annotate \
+    -i /data/unscaffolded_output \
+    -o /data/unscaffolded_output_annotated \
+    --cpus 8
+
+
+docker run --rm -v "$PWD":/data -w /data --platform linux/amd64 \
+  nextgenusfs/funannotate funannotate annotate \
+    -i /data/scaffolded_output \
+    -o /data/scaffolded_output_annotated \
+    --cpus 8
+```    
+## Found 0 duplicated annotations, adding 12,439 valid annotations
+```
+
 ```
