@@ -41,11 +41,6 @@ flye --nano-hq Lachancea_thermotolerans_95filtered.fastq \
 
 # step 2:
 ``````{bash , eval=FALSE, message=FALSE, warning=FALSE}
-docker run --rm \
-  -v "$PWD":/data \
-  -w /data \
-  ezlabgva/busco:v6.0.0_cv1 \
-  busco -i assembly_unscaffolded.fasta -o busco_output -l lachanceathermotolerans_odb12 -m genome -c 8
 
 
 docker run --rm \
@@ -128,5 +123,69 @@ docker run --rm -v "$PWD":/data -w /data --platform linux/amd64 \
 ```    
 ## Found 0 duplicated annotations, adding 12,439 valid annotations
 ```
+
+
+```
+conda activate sequali_env
+sequali --outdir ./sequali_reports "./lachanceaFermentati.fastq"
+
+filtlong -p 95 "lachanceaFermentati.fastq" > "lachanceaFermentati.fastq_95filtered.fastq"
+
+filtlong -p 92 "lachanceaFermentati.fastq" > "lachanceaFermentati.fastq_92filtered.fastq"
+
+sequali --outdir ./sequali_reports "./lachanceaFermentati.fastq_92filtered.fastq"
+
+flye --nano-hq lachanceaFermentati.fastq_92filtered.fastq \
+     --out-dir flye_output_lachanceaFermentati \
+     --threads 8 \
+     --genome-size 10m \
+     --iterations 5
+
+docker run --rm \
+  -v "$PWD":/data \
+  -w /data \
+  ezlabgva/busco:v6.0.0_cv1 \
+  busco -i assembly_lachanceaFermentati.fasta -o busco_output_lachanceaFermentati -l saccharomycetaceae_odb12 -m genome -c 8
+  
+  
+  
+docker run --rm -v "$(pwd)":/data -w /data quay.io/biocontainers/quast:5.3.0--py313pl5321h5ca1c30_2 \
+  quast.py assembly_lachanceaFermentati.fasta \
+  -r GCA_900074765.1_LAFE0_genomic.fna \
+  -g GCA_900074765.1_LAFE0_genomic.gff \
+  -o quast_output_lachanceaFermentati
+  
+  
+  
+docker run --rm -v "$PWD":/data -w /data \
+  nextgenusfs/funannotate funannotate clean \
+ -i assembly_lachanceaFermentati.fasta -o assembly_lachanceaFermentati_cleaned.fasta
+ 
+ 
+docker run --rm -v "$PWD":/data -w /data \
+  nextgenusfs/funannotate funannotate mask \
+ -i assembly_lachanceaFermentati_cleaned.fasta -o assembly_lachanceaFermentati_masked.fasta
+ 
+ 
+ 
+docker run --rm -v "$PWD":/data -w /data --platform linux/amd64 \
+  nextgenusfs/funannotate funannotate predict \
+  -i assembly_lachanceaFermentati_masked.fasta \
+  -o /data/lachanceaFermentati_output \
+  --species "Lachancea Fermentati" \
+  --strain my_strain \
+  --protein_evidence /data/GCA_900074765.1_LAFE0_protein.faa \
+  --transcript_evidence /data/GCA_900074765.1_LAFE0_cds_from_genomic.fna \
+  --cpus 8
+  
+  
+docker run --rm -v "$PWD":/data -w /data --platform linux/amd64 \
+  nextgenusfs/funannotate funannotate annotate \
+    -i /data/lachanceaFermentati_output \
+    -o /data/lachanceaFermentati_output_annotated \
+    --cpus 8
+    
+# Found 0 duplicated annotations, adding 5,186 valid annotations
+
 
 ```
